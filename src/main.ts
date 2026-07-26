@@ -14,7 +14,7 @@ import {
 } from '@evenrealities/even_hub_sdk'
 import { getLocation, type GeoResult } from './location'
 import { nearbyStops, departures, type Stop, type Departure } from './transit'
-import { departureLabel, stopLabel, clamp } from './format'
+import { departureRows, stopLabel, clamp } from './format'
 import { Renderer } from './render'
 
 const TITLE = 'ABFAHRTEN'
@@ -100,7 +100,7 @@ async function main(): Promise<void> {
   async function renderDepartures(): Promise<void> {
     if (state.name !== 'departures') return
     const title = clamp(state.stop.name, 40)
-    const items = state.deps.map(departureLabel)
+    const items = departureRows(state.deps, 20)
     await view.list(title, items.length ? items : ['Keine Abfahrten'])
   }
 

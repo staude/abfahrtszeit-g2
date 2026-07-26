@@ -38,6 +38,50 @@ export function stopLabel(s: Stop): string {
   return clamp(dist ? `${s.name} (${dist})` : s.name, 64)
 }
 
+const WEEKDAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
+
+function localDateKey(dt: Date): string {
+  return `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}`
+}
+
+/** Datums-Trennzeile, z. B. "-- Mo 27.07. --" */
+function dateHeader(dt: Date): string {
+  const wd = WEEKDAYS[dt.getDay()]
+  const dd = String(dt.getDate()).padStart(2, '0')
+  const mm = String(dt.getMonth() + 1).padStart(2, '0')
+  return `-- ${wd} ${dd}.${mm}. --`
+}
+
+/** True, wenn die Zeile eine Datums-Trennzeile ist (kein anwaehlbarer Eintrag). */
+export function isDateHeader(row: string): boolean {
+  return row.startsWith('-- ')
+}
+
+/**
+ * Abfahrtsliste mit Datumszeilen: vor dem ersten Eintrag und immer dann,
+ * wenn sich das (lokale) Datum aendert, wird eine Datums-Trennzeile eingefuegt.
+ * Auf `max` Zeilen begrenzt, endet nie auf einer Trennzeile.
+ */
+export function departureRows(deps: Departure[], max = 20): string[] {
+  const rows: string[] = []
+  let lastKey = ''
+  for (const d of deps) {
+    const iso = d.when ?? d.scheduledWhen
+    const dt = iso ? new Date(iso) : null
+    if (dt && !isNaN(dt.getTime())) {
+      const k = localDateKey(dt)
+      if (k !== lastKey) {
+        rows.push(dateHeader(dt))
+        lastKey = k
+      }
+    }
+    rows.push(departureLabel(d))
+  }
+  if (rows.length > max) rows.length = max
+  while (rows.length && isDateHeader(rows[rows.length - 1])) rows.pop()
+  return rows
+}
+
 /** "12:34+2  751  Schlossplatz"  (ausgefallen: "12:34  751  X Ziel") */
 export function departureLabel(d: Departure): string {
   const iso = d.when ?? d.scheduledWhen
