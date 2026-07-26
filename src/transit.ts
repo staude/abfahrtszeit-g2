@@ -122,32 +122,53 @@ function mapDeparture(s: any): Departure {
   }
 }
 
-async function stoptimesFor(stopId: string, n: number): Promise<Departure[]> {
-  const url = `${API}/stoptimes?stopId=${encodeURIComponent(stopId)}&n=${n}&arriveBy=false`
+async function stoptimesFor(
+  stopId: string,
+  n: number,
+  timeIso: string,
+): Promise<Departure[]> {
+  const url =
+    `${API}/stoptimes?stopId=${encodeURIComponent(stopId)}` +
+    `&n=${n}&arriveBy=false&time=${encodeURIComponent(timeIso)}`
   const data = (await fetchJson(url)) as any
   const arr: any[] = Array.isArray(data?.stopTimes) ? data.stopTimes : []
   return arr.map(mapDeparture)
 }
 
+/** Effektive Abfahrtszeit (Echtzeit, sonst Soll) in ms. */
+function departureTime(d: Departure): number {
+  return new Date(d.when ?? d.scheduledWhen ?? 0).getTime()
+}
+
 /**
- * Naechste Abfahrten einer Station. Fragt bis zu 4 Steige parallel ab,
- * fuehrt sie zusammen, dedupliziert nach Fahrt und sortiert nach Zeit.
+ * Naechste Abfahrten einer Station AB JETZT. Fragt bis zu 4 Steige parallel
+ * mit time=jetzt ab, fuehrt sie zusammen, dedupliziert nach Fahrt, filtert
+ * bereits vergangene Abfahrten heraus (60 s Toleranz) und sortiert nach Zeit.
  */
 export async function departures(stop: Stop, n = 20): Promise<Departure[]> {
+  const now = Date.now()
+  const nowIso = new Date(now).toISOString()
+  const cutoff = now - 60_000 // 60 s Toleranz fuer knapp verpasste/Uhr-Drift
+
   const ids = stop.childIds.slice(0, 4)
   const lists = await Promise.all(
-    ids.map((id) => stoptimesFor(id, n).catch(() => [] as Departure[])),
+    ids.map((id) =>
+      stoptimesFor(id, n, nowIso).catch(() => [] as Departure[]),
+    ),
   )
+
   const key = (d: Departure) => `${d.tripId}|${d.scheduledWhen ?? ''}`
   const seen = new Set<string>()
   const merged: Departure[] = []
   for (const d of lists.flat()) {
+    if (departureTime(d) < cutoff) continue // nur zukuenftige Abfahrten
     const k = key(d)
     if (seen.has(k)) continue
     seen.add(k)
     merged.push(d)
   }
-  const t = (d: Departure) =>
-    new Date(d.when ?? d.scheduledWhen ?? 0).getTime()
-  return merged.sort((a, b) => t(a) - t(b)).slice(0, n)
+
+  return merged
+    .sort((a, b) => departureTime(a) - departureTime(b))
+    .slice(0, n)
 }
