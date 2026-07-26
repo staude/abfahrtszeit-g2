@@ -35,9 +35,13 @@ ueber Transitous (MOTIS, api.transitous.org), deutschlandweit.
 - map/stops liefert steig-genaue Knoten -> nach Name zu Stationen gruppiert;
   Abfahrten werden aus bis zu 4 Steig-IDs zusammengefuehrt (stripped Parent-ID
   liefert 0 Abfahrten).
-- Kein Standort-API im SDK. Standort kommt aus `navigator.geolocation`
-  (Handy-WebView), bei Verweigerung Fallback auf IP-Geolocation
-  (ipwho.is, ipapi.co). Beide Hosts in der network-whitelist.
+- Standort: primaer `bridge.getAppLocation()` (native Even-App-Ortung, ab
+  SDK 0.0.12; nutzt die iOS/Android-Standortfreigabe der App und funktioniert
+  auch im Prototype ueber http://LAN). Fallback 1: `navigator.geolocation`
+  (nur bei sicherem Origin, im http-Prototype blockiert). Fallback 2: grobe
+  IP-Geolocation (ipwho.is, ipapi.co, in der network-whitelist).
+  Wichtig: dafuer muss die "location"-Permission in app.json stehen und die
+  Even-App in den iOS-Einstellungen die Ortungsfreigabe haben.
 - Listen koennen nicht in-place aktualisiert werden -> jeder Seitenwechsel
   ist ein `rebuildPageContainer`. Bewusst turn-based (kein Live-Refresh).
 - Navigation: Liste scrollen per Swipe, Einfachtipp waehlt aus,

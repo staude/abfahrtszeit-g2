@@ -23,11 +23,17 @@ auf Basis der DELFI-GTFS-Feeds inkl. Echtzeit. Keine API-Keys noetig.
 
 ## Standort
 
-Das SDK liefert keinen Standort. Das Plugin versucht zuerst
-`navigator.geolocation` (GPS des Handys, sofern die WebView die Freigabe
-durchreicht) und faellt bei Verweigerung auf eine grobe IP-Geolocation
-zurueck (`ipwho.is`, dann `ipapi.co`). Im Simulator wird der Standort des
-Rechners bzw. der IP-Fallback verwendet.
+Das Plugin ermittelt den Standort in dieser Reihenfolge:
+
+1. **`bridge.getAppLocation()`** — native Ortung ueber die Even-App (SDK ab
+   0.0.12). Nutzt die iOS/Android-Standortfreigabe der App und funktioniert
+   auch im Prototype-Betrieb ueber `http://<LAN-IP>`. Voraussetzung: die
+   Even-App hat in den Systemeinstellungen die Ortungsfreigabe.
+2. **`navigator.geolocation`** — GPS der WebView, nur bei sicherem Origin
+   (HTTPS); im http-Prototype blockiert.
+3. **IP-Geolocation** — grober Fallback (`ipwho.is`, dann `ipapi.co`).
+
+Im Simulator wird i. d. R. der IP-Fallback verwendet (Titel zeigt dann `(ca.)`).
 
 ## Voraussetzungen
 

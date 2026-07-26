@@ -45,7 +45,7 @@ async function main(): Promise<void> {
     try {
       state = { name: 'locating' }
       await view.text(TITLE, 'Standort wird ermittelt ...')
-      const geo = await getLocation()
+      const geo = await getLocation(bridge)
 
       await view.text(TITLE, 'Suche Haltestellen ...')
       const stops = await nearbyStops(geo.lat, geo.lon, 20)

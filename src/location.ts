@@ -1,17 +1,39 @@
-// Standortermittlung. Das Even-Hub-SDK bietet KEINE Standort-API, daher:
-//   1. navigator.geolocation (GPS des Handys, sofern die WebView die
-//      Freigabe durchreicht bzw. im Simulator der Rechner-Standort)
-//   2. Fallback auf grobe IP-Geolocation (ipwho.is, dann ipapi.co)
-// Beide Netz-Hosts stehen in der app.json network-whitelist.
+// Standortermittlung, in Reihenfolge der Zuverlaessigkeit:
+//   1. bridge.getAppLocation()  — native Ortung ueber die Even-App (nutzt die
+//      iOS/Android-Standortfreigabe der App). Funktioniert auch im Prototype
+//      ueber http://LAN, wo die WebView-Geolocation blockiert ist.
+//   2. navigator.geolocation     — GPS der WebView (nur bei sicherem Origin)
+//   3. IP-Geolocation            — grober Fallback (ipwho.is, dann ipapi.co)
+// Fuer (1) muss in app.json die "location"-Permission stehen.
 
+import { AppLocationAccuracy } from '@evenrealities/even_hub_sdk'
 import { fetchJson } from './http'
 
 export interface GeoResult {
   lat: number
   lon: number
-  source: 'gps' | 'ip'
-  accuracy?: number // Meter (nur GPS)
-  label?: string // Stadt (nur IP)
+  source: 'app' | 'gps' | 'ip'
+  accuracy?: number // Meter (app/gps)
+  label?: string // Stadt (ip)
+}
+
+async function appLocation(bridge: any, timeoutMs = 8000): Promise<GeoResult> {
+  if (!bridge || typeof bridge.getAppLocation !== 'function') {
+    throw new Error('getAppLocation nicht verfuegbar')
+  }
+  const loc = await bridge.getAppLocation({
+    accuracy: AppLocationAccuracy.High,
+    timeoutMs,
+  })
+  if (loc && typeof loc.latitude === 'number' && typeof loc.longitude === 'number') {
+    return {
+      lat: loc.latitude,
+      lon: loc.longitude,
+      source: 'app',
+      accuracy: typeof loc.accuracy === 'number' ? loc.accuracy : undefined,
+    }
+  }
+  throw new Error('App-Ortung ohne Ergebnis')
 }
 
 function browserGeolocation(timeoutMs = 6000): Promise<GeoResult> {
@@ -57,8 +79,13 @@ async function ipGeolocation(): Promise<GeoResult> {
   throw new Error('IP-Standort fehlgeschlagen')
 }
 
-/** Bester verfuegbarer Standort: GPS zuerst, sonst IP. */
-export async function getLocation(): Promise<GeoResult> {
+/** Bester verfuegbarer Standort: native App-Ortung, sonst WebView-GPS, sonst IP. */
+export async function getLocation(bridge: any): Promise<GeoResult> {
+  try {
+    return await appLocation(bridge)
+  } catch {
+    // native Ortung nicht verfuegbar/verweigert -> weiter
+  }
   try {
     return await browserGeolocation()
   } catch {
