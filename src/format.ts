@@ -2,7 +2,7 @@
 // genuegt: kompakte Zeilen, ASCII-sicher (keine exotischen Glyphen).
 // Listen-Items: max. 64 Zeichen (SDK-Grenze).
 
-import type { Departure, Stop } from './transit'
+import type { Departure, Stop, TripStop } from './transit'
 
 /** Auf max. `max` Zeichen kuerzen (ohne Ellipsis-Glyph, firmware-sicher). */
 export function clamp(s: string, max: number): string {
@@ -52,18 +52,21 @@ function dateHeader(dt: Date): string {
   return `-- ${wd} ${dd}.${mm}. --`
 }
 
-/** True, wenn die Zeile eine Datums-Trennzeile ist (kein anwaehlbarer Eintrag). */
-export function isDateHeader(row: string): boolean {
-  return row.startsWith('-- ')
+/** Eine Listenzeile: Label plus (falls Abfahrt) die zugehoerige Abfahrt.
+ *  `departure === null` markiert eine Datums-Trennzeile (nicht anwaehlbar). */
+export interface DepartureRow {
+  label: string
+  departure: Departure | null
 }
 
 /**
  * Abfahrtsliste mit Datumszeilen: vor dem ersten Eintrag und immer dann,
  * wenn sich das (lokale) Datum aendert, wird eine Datums-Trennzeile eingefuegt.
- * Auf `max` Zeilen begrenzt, endet nie auf einer Trennzeile.
+ * Auf `max` Zeilen begrenzt, endet nie auf einer Trennzeile. Jede Zeile
+ * traegt ihre Abfahrt mit, damit ein Tipp die richtige Fahrt aufloesen kann.
  */
-export function departureRows(deps: Departure[], max = 20): string[] {
-  const rows: string[] = []
+export function departureRowList(deps: Departure[], max = 20): DepartureRow[] {
+  const rows: DepartureRow[] = []
   let lastKey = ''
   for (const d of deps) {
     const iso = d.when ?? d.scheduledWhen
@@ -71,15 +74,21 @@ export function departureRows(deps: Departure[], max = 20): string[] {
     if (dt && !isNaN(dt.getTime())) {
       const k = localDateKey(dt)
       if (k !== lastKey) {
-        rows.push(dateHeader(dt))
+        rows.push({ label: dateHeader(dt), departure: null })
         lastKey = k
       }
     }
-    rows.push(departureLabel(d))
+    rows.push({ label: departureLabel(d), departure: d })
   }
   if (rows.length > max) rows.length = max
-  while (rows.length && isDateHeader(rows[rows.length - 1])) rows.pop()
+  while (rows.length && rows[rows.length - 1].departure === null) rows.pop()
   return rows
+}
+
+/** "06:22  Schaufling, Gh.z.Post" */
+export function tripStopLabel(s: TripStop): string {
+  const t = s.when ? hhmm(s.when) : '--:--'
+  return clamp(`${t}  ${s.name}`, 64)
 }
 
 /** "12:34+2  751  Schlossplatz"  (ausgefallen: "12:34  751  X Ziel") */

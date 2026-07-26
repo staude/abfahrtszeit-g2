@@ -18,6 +18,11 @@ export interface Stop {
   childIds: string[] // alle Steig-/Bahnsteig-IDs dieser Station
 }
 
+export interface TripStop {
+  name: string
+  when: string | null // Abfahrt (sonst Ankunft), ISO
+}
+
 export interface Departure {
   when: string | null // Echtzeit-Abfahrt (ISO)
   scheduledWhen: string | null // Soll-Abfahrt (ISO)
@@ -171,4 +176,37 @@ export async function departures(stop: Stop, n = 20): Promise<Departure[]> {
   return merged
     .sort((a, b) => departureTime(a) - departureTime(b))
     .slice(0, n)
+}
+
+/**
+ * Vollstaendiger Fahrtverlauf (alle Halte) einer Fahrt anhand ihrer tripId.
+ * Reihenfolge: Start -> Zwischenhalte -> Ziel. Zeiten = Abfahrt (sonst Ankunft).
+ */
+export async function tripStops(
+  tripId: string,
+): Promise<{ stops: TripStop[]; headsign: string | null }> {
+  const data = (await fetchJson(
+    `${API}/trip?tripId=${encodeURIComponent(tripId)}`,
+  )) as any
+  const legs: any[] = Array.isArray(data?.legs) ? data.legs : []
+  const stops: TripStop[] = []
+  let headsign: string | null = null
+  for (const l of legs) {
+    if (!headsign && l?.headsign) headsign = String(l.headsign)
+    const seq = [
+      l?.from,
+      ...(Array.isArray(l?.intermediateStops) ? l.intermediateStops : []),
+      l?.to,
+    ].filter(Boolean)
+    for (const s of seq) {
+      const name = s.name ? String(s.name) : '?'
+      const when =
+        s.departure ?? s.arrival ?? s.scheduledDeparture ?? s.scheduledArrival ?? null
+      // aufeinanderfolgende Dubletten (Leg-Grenzen) vermeiden
+      const last = stops[stops.length - 1]
+      if (last && last.name === name) continue
+      stops.push({ name, when })
+    }
+  }
+  return { stops, headsign }
 }

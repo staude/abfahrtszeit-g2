@@ -1,11 +1,12 @@
 // abfahrtszeit-g2 — Abfahrten des OePNV rund um den eigenen Standort.
 //
 // Ablauf:  Standort ermitteln -> Haltestellen in der Naehe (Liste)
-//          -> Haltestelle antippen -> Abfahrten (Liste).
+//          -> Haltestelle antippen -> Abfahrten (Liste, mit Datumszeilen)
+//          -> Abfahrt antippen -> Fahrtverlauf (alle Halte der Fahrt).
 //
 // Bedienung:
 //   Swipe hoch/runter  Liste scrollen (Firmware, kein Event)
-//   Einfachtipp        Haltestelle waehlen / Abfahrten aktualisieren
+//   Einfachtipp        Haltestelle -> Abfahrten, Abfahrt -> Fahrtverlauf
 //   Doppeltipp         zurueck; auf der Haltestellen-Liste: beenden
 
 import {
@@ -13,16 +14,45 @@ import {
   OsEventTypeList,
 } from '@evenrealities/even_hub_sdk'
 import { getLocation, type GeoResult } from './location'
-import { nearbyStops, departures, type Stop, type Departure } from './transit'
-import { departureRows, stopLabel, clamp } from './format'
+import {
+  nearbyStops,
+  departures,
+  tripStops,
+  type Stop,
+  type Departure,
+  type TripStop,
+} from './transit'
+import {
+  departureRowList,
+  tripStopLabel,
+  stopLabel,
+  clamp,
+  type DepartureRow,
+} from './format'
 import { Renderer } from './render'
 
 const TITLE = 'ABFAHRTEN'
 
+type StopsState = { name: 'stops'; geo: GeoResult; stops: Stop[] }
+type DeparturesState = {
+  name: 'departures'
+  geo: GeoResult
+  stops: Stop[]
+  stop: Stop
+  deps: Departure[]
+  rows: DepartureRow[]
+}
+type TripState = {
+  name: 'trip'
+  from: DeparturesState
+  dep: Departure
+  stops: TripStop[]
+}
 type State =
   | { name: 'locating' }
-  | { name: 'stops'; geo: GeoResult; stops: Stop[] }
-  | { name: 'departures'; geo: GeoResult; stops: Stop[]; stop: Stop; deps: Departure[] }
+  | StopsState
+  | DeparturesState
+  | TripState
   | { name: 'error'; message: string }
 
 async function main(): Promise<void> {
@@ -66,20 +96,44 @@ async function main(): Promise<void> {
   }
 
   async function openDepartures(stop: Stop): Promise<void> {
-    if (busy || state.name === 'locating' || state.name === 'error') return
-    const base = state // stops oder departures
+    if (busy || state.name !== 'stops') return
+    const { geo, stops } = state
     busy = true
     try {
       await view.text(TITLE, `${stop.name}\nLade Abfahrten ...`)
       const deps = await departures(stop, 20)
-      state = {
-        name: 'departures',
-        geo: base.geo,
-        stops: base.stops,
-        stop,
-        deps,
-      }
+      const rows = departureRowList(deps, 20)
+      state = { name: 'departures', geo, stops, stop, deps, rows }
       await renderDepartures()
+    } catch (e) {
+      state = { name: 'error', message: errMsg(e) }
+      await renderError()
+    } finally {
+      busy = false
+    }
+  }
+
+  async function openTrip(dep: Departure): Promise<void> {
+    if (busy || state.name !== 'departures' || !dep.tripId) return
+    const from = state
+    busy = true
+    try {
+      await view.text(TITLE, `${dep.line} ${dep.direction ?? ''}\nLade Fahrt ...`)
+      const { stops } = await tripStops(dep.tripId)
+
+      // Verlauf ab dem Einstieg (zeitlich passender Halt) beginnen, damit die
+      // Fahrt ab "hier" gezeigt wird und in die Liste passt.
+      const depMs = new Date(dep.when ?? dep.scheduledWhen ?? 0).getTime()
+      let start = 0
+      if (depMs) {
+        const idx = stops.findIndex(
+          (s) => s.when && Math.abs(new Date(s.when).getTime() - depMs) < 120_000,
+        )
+        if (idx > 0) start = idx
+      }
+      const onward = stops.slice(start)
+      state = { name: 'trip', from, dep, stops: onward.length ? onward : stops }
+      await renderTrip()
     } catch (e) {
       state = { name: 'error', message: errMsg(e) }
       await renderError()
@@ -100,8 +154,16 @@ async function main(): Promise<void> {
   async function renderDepartures(): Promise<void> {
     if (state.name !== 'departures') return
     const title = clamp(state.stop.name, 40)
-    const items = departureRows(state.deps, 20)
+    const items = state.rows.map((r) => r.label)
     await view.list(title, items.length ? items : ['Keine Abfahrten'])
+  }
+
+  async function renderTrip(): Promise<void> {
+    if (state.name !== 'trip') return
+    const d = state.dep
+    const title = clamp(`${d.line} ${d.direction ?? ''}`.trim(), 60)
+    const items = state.stops.map(tripStopLabel)
+    await view.list(title, items.length ? items : ['Kein Fahrtverlauf'])
   }
 
   async function renderError(): Promise<void> {
@@ -118,6 +180,8 @@ async function main(): Promise<void> {
         return renderStops()
       case 'departures':
         return renderDepartures()
+      case 'trip':
+        return renderTrip()
       case 'error':
         return renderError()
       case 'locating':
@@ -133,9 +197,11 @@ async function main(): Promise<void> {
       const stop = state.stops[index]
       if (stop) void openDepartures(stop)
     } else if (state.name === 'departures') {
-      // Einfachtipp aktualisiert die aktuelle Haltestelle
-      void openDepartures(state.stop)
+      const row = state.rows[index]
+      if (row && row.departure) void openTrip(row.departure)
+      // Datums-Trennzeile (row.departure === null): ignorieren
     }
+    // trip: Tipp auf einen Halt hat keine weitere Aktion
   }
 
   function onSingleClick(): void {
@@ -146,11 +212,12 @@ async function main(): Promise<void> {
   }
 
   function onDoubleClick(): void {
-    if (busy) {
-      // Waehrend eines Ladevorgangs keinen harten Abbruch; ignorieren.
-      return
-    }
-    if (state.name === 'departures') {
+    if (busy) return // waehrend Ladevorgang keinen harten Abbruch
+    if (state.name === 'trip') {
+      // zurueck zur Abfahrtsliste (ohne neu zu laden)
+      state = state.from
+      void renderDepartures()
+    } else if (state.name === 'departures') {
       // zurueck zur Haltestellen-Liste (ohne neu zu laden)
       state = { name: 'stops', geo: state.geo, stops: state.stops }
       void renderStops()
