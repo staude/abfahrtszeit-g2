@@ -17,6 +17,19 @@ export interface GeoResult {
   label?: string // Stadt (ip)
 }
 
+// Test-/Override-Standort ueber URL-Parameter (?lat=..&lon=..). Praktisch im
+// Simulator (der sonst per IP ortet) und fuer reproduzierbare Screenshots.
+function overrideFromUrl(): GeoResult | null {
+  if (typeof window === 'undefined' || !window.location) return null
+  const p = new URLSearchParams(window.location.search)
+  const lat = parseFloat(p.get('lat') ?? '')
+  const lon = parseFloat(p.get('lon') ?? '')
+  if (Number.isFinite(lat) && Number.isFinite(lon)) {
+    return { lat, lon, source: 'gps' }
+  }
+  return null
+}
+
 async function appLocation(bridge: any, timeoutMs = 8000): Promise<GeoResult> {
   if (!bridge || typeof bridge.getAppLocation !== 'function') {
     throw new Error('getAppLocation nicht verfuegbar')
@@ -79,8 +92,10 @@ async function ipGeolocation(): Promise<GeoResult> {
   throw new Error('IP-Standort fehlgeschlagen')
 }
 
-/** Bester verfuegbarer Standort: native App-Ortung, sonst WebView-GPS, sonst IP. */
+/** Bester verfuegbarer Standort: URL-Override, native App-Ortung, WebView-GPS, IP. */
 export async function getLocation(bridge: any): Promise<GeoResult> {
+  const override = overrideFromUrl()
+  if (override) return override
   try {
     return await appLocation(bridge)
   } catch {
