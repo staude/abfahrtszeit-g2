@@ -1,0 +1,25 @@
+{
+  "package_id": "net.staude.abfahrtszeitg2",
+  "name": "Abfahrten G2",
+  "version": "0.1.0",
+  "edition": "202601",
+  "min_app_version": "2.0.0",
+  "min_sdk_version": "0.0.11",
+  "entrypoint": "index.html",
+  "permissions": [
+    {
+      "name": "location",
+      "desc": "Ermittelt Ihren Standort, um Haltestellen in der Naehe zu finden."
+    },
+    {
+      "name": "network",
+      "desc": "Laedt Haltestellen und Abfahrtszeiten aus der Fahrplan-API.",
+      "whitelist": [
+        "https://api.transitous.org",
+        "https://ipwho.is",
+        "https://ipapi.co"
+      ]
+    }
+  ],
+  "supported_languages": ["de", "en"]
+}
