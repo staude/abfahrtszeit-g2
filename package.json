@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@evenrealities/even_hub_sdk": "^0.0.12"
+    "@evenrealities/even_hub_sdk": "0.0.12"
   },
   "devDependencies": {
     "typescript": "^5.5.0",

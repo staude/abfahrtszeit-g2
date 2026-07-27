@@ -30,6 +30,7 @@ import {
   type DepartureRow,
 } from './format'
 import { Renderer } from './render'
+import { initPhoneUi } from './phone'
 
 const TITLE = 'ABFAHRTEN'
 
@@ -56,6 +57,9 @@ type State =
   | { name: 'error'; message: string }
 
 async function main(): Promise<void> {
+  // Handy-Seite sofort aufbauen, damit das WebView nie leer ist (Review).
+  const phone = initPhoneUi()
+
   const bridge = await waitForEvenAppBridge()
   const view = new Renderer(bridge)
 
@@ -74,20 +78,25 @@ async function main(): Promise<void> {
     busy = true
     try {
       state = { name: 'locating' }
+      phone.setStatus('Standort wird ermittelt ...')
       await view.text(TITLE, 'Standort wird ermittelt ...')
       const geo = await getLocation(bridge)
 
+      phone.setStatus('Suche Haltestellen ...')
       await view.text(TITLE, 'Suche Haltestellen ...')
       const stops = await nearbyStops(geo.lat, geo.lon, 20)
 
       if (stops.length === 0) {
+        phone.setStatus('Keine Haltestellen in der Naehe gefunden.')
         state = { name: 'error', message: 'Keine Haltestellen in der Naehe gefunden.' }
         await renderError()
         return
       }
+      phone.setStops(stops, geo)
       state = { name: 'stops', geo, stops }
       await renderStops()
     } catch (e) {
+      phone.setStatus(`Fehler beim Laden: ${errMsg(e)}`)
       state = { name: 'error', message: errMsg(e) }
       await renderError()
     } finally {
@@ -148,7 +157,9 @@ async function main(): Promise<void> {
     if (state.name !== 'stops') return
     const src = state.geo.source === 'ip' ? ' (ca.)' : ''
     const title = `${TITLE}  ${state.stops.length}${src}`
-    await view.list(title, state.stops.map(stopLabel))
+    // Zeile 0 = No-Op-Kopfzeile (Firmware-Auto-Select), Stops ab Zeile 1.
+    const items = ['- Haltestelle waehlen -', ...state.stops.map(stopLabel)]
+    await view.list(title, items)
   }
 
   async function renderDepartures(): Promise<void> {
@@ -162,8 +173,10 @@ async function main(): Promise<void> {
     if (state.name !== 'trip') return
     const d = state.dep
     const title = clamp(`${d.line} ${d.direction ?? ''}`.trim(), 60)
-    const items = state.stops.map(tripStopLabel)
-    await view.list(title, items.length ? items : ['Kein Fahrtverlauf'])
+    // Zeile 0 = No-Op-Kopfzeile (Firmware-Auto-Select), Halte ab Zeile 1.
+    const stops = state.stops.map(tripStopLabel)
+    const items = ['- Fahrtverlauf -', ...(stops.length ? stops : ['Kein Fahrtverlauf'])]
+    await view.list(title, items)
   }
 
   async function renderError(): Promise<void> {
@@ -194,7 +207,8 @@ async function main(): Promise<void> {
   function onListSelect(index: number): void {
     if (busy) return
     if (state.name === 'stops') {
-      const stop = state.stops[index]
+      // Zeile 0 ist die Kopfzeile -> echte Stops ab Index 1
+      const stop = state.stops[index - 1]
       if (stop) void openDepartures(stop)
     } else if (state.name === 'departures') {
       const row = state.rows[index]

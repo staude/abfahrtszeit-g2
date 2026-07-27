@@ -58,6 +58,15 @@ Screenshots, z. B. Bahnhof Ansbach:
 evenhub-simulator "http://localhost:5173/?lat=49.2994&lon=10.5794"
 ```
 
+## Handy-Seite
+
+Die Brille zeigt das eigentliche UI. Das Flutter-WebView auf dem Handy darf
+aber nicht leer sein (Store-Review-Anforderung), deshalb rendert
+[`src/phone.ts`](src/phone.ts) dort eine begleitende Seite: App-Identität,
+Live-Liste der Haltestellen in der Nähe (dieselben Daten wie die Brille) und
+Bedienhinweise. Gestaltet nach den Even Phone-Side-Tokens (hell/dunkel), Akzent
+sparsam, nie das Brillen-Grün.
+
 ## Voraussetzungen
 
 - Node 20 LTS oder 22+
@@ -82,9 +91,14 @@ evenhub qr --url "http://<LAN-IP>:5173"   # QR-Code erzeugen
 QR-Code mit der Even-Realities-App scannen. Handy und Mac muessen im
 selben Netz sein, Firewall und WLAN-Client-Isolation beachten.
 
-## Packen
+## Packen und einreichen
 
 ```bash
 npm run build
 evenhub pack app.json dist -o abfahrtszeit-g2.ehpk
 ```
+
+Das globale `evenhub`-Binary nutzen, nicht `npx evenhub` (das sucht ein
+npm-Paket und schlägt fehl). Die `.ehpk` dann im Dev Portal
+(hub.evenrealities.com) einreichen. Das Menü-Icon `docs/icon-24.png` wird im
+Portal separat hochgeladen, es steckt nicht in der `.ehpk`.

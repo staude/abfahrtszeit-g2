@@ -23,10 +23,38 @@ ueber Transitous (MOTIS, api.transitous.org), deutschlandweit.
 ## Deploy
 
 - Packen: `npm run build`, dann `evenhub pack app.json dist -o abfahrtszeit-g2.ehpk`
+  (globales `evenhub`-Binary, NICHT `npx evenhub` - das sucht ein npm-Paket).
+- Einreichen im Dev Portal (hub.evenrealities.com). Icon `docs/icon-24.png`
+  dort hochladen (steckt nicht in der .ehpk).
+
+## Architektur
+
+- `src/transit.ts` - API-Client (Transitous/MOTIS): nearbyStops, departures
+  (merge über Steige, time=jetzt, Filter auf zukünftig), tripStops.
+- `src/location.ts` - Standort: URL-Override, getAppLocation, navigator, IP.
+- `src/format.ts` - Labels, Datumszeilen, DepartureRow-Mapping, clamp.
+- `src/render.ts` - Renderer (text/list), prüft rebuild-Ergebnis, Fallback.
+- `src/phone.ts` - Handy-Seite (WebView), Pflicht fürs Store-Review.
+- `src/main.ts` - State-Machine (locating/stops/departures/trip/error).
 
 ## Besonderheiten
 
 - package_id: net.staude.abfahrtszeitg2
+- Store-Metadaten in app.json: name, description, tagline, author, edition,
+  min_app_version, min_sdk_version. Ohne die lehnt der Store ab.
+- SDK exakt auf 0.0.12 gepinnt (nicht `^`): `getAppLocation` gibt es erst ab
+  0.0.12. Kein Bild-Container in dieser App -> der 0.0.12-Bild-Bug
+  (updateImageRawData -> sendFailed, siehe dorfkino-g2) trifft hier nicht.
+- FIRMWARE-AUTO-SELECT: Nach jedem Listenaufbau feuert die Firmware einen
+  Auto-Select auf Index 0 (im Protobuf ohne Index, von einem echten Tipp auf
+  Zeile 0 nicht unterscheidbar). Deshalb ist Zeile 0 jeder Liste eine No-Op-
+  Kopfzeile ("- Haltestelle waehlen -", Datumszeile, "- Fahrtverlauf -");
+  echte Eintraege ab Index 1 (Stops-Mapping: `stops[index - 1]`). Ohne das
+  oeffnet die Brille beim Aufbau sofort die erste Haltestelle. Auf Hardware
+  bei dorfkino-g2 erarbeitet.
+- Handy-Seite (`phone.ts`) ist Pflicht: ein leeres WebView ist ein
+  Store-Ablehnungsgrund. Zeigt Identitaet, Haltestellen in der Naehe,
+  Bedienhinweise. Akzent `#FEF991`, NIE das Brillen-Gruen.
 - Datenquelle: https://api.transitous.org (MOTIS v2, DELFI-GTFS + Echtzeit,
   deutschlandweit). Sendet CORS `*`, keine API-Keys. Domain steht in der
   app.json network-whitelist. Ersetzt die urspruenglich geplante DB-HAFAS-API

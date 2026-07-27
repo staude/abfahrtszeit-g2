@@ -2,18 +2,21 @@
   "package_id": "net.staude.abfahrtszeitg2",
   "name": "Abfahrten G2",
   "version": "0.1.0",
+  "description": "Zeigt die nächsten ÖPNV-Abfahrten rund um Ihren Standort auf der Brille: Haltestellen in der Nähe wählen, Abfahrten von Bus, Tram, S-/U-Bahn und Zug mit Echtzeit sehen und den kompletten Fahrtverlauf einer Fahrt nachlesen. Standort über die Even-App, deutschlandweite Daten über Transitous.",
+  "tagline": "ÖPNV-Abfahrten in deiner Nähe auf der Brille",
+  "author": "Frank Neumann-Staude",
   "edition": "202601",
-  "min_app_version": "2.0.0",
-  "min_sdk_version": "0.0.11",
+  "min_app_version": "0.1.0",
+  "min_sdk_version": "0.0.12",
   "entrypoint": "index.html",
   "permissions": [
     {
       "name": "location",
-      "desc": "Ermittelt Ihren Standort, um Haltestellen in der Naehe zu finden."
+      "desc": "Ermittelt Ihren Standort, um Haltestellen in der Nähe zu finden."
     },
     {
       "name": "network",
-      "desc": "Laedt Haltestellen und Abfahrtszeiten aus der Fahrplan-API.",
+      "desc": "Lädt Haltestellen und Abfahrtszeiten aus der Fahrplan-API.",
       "whitelist": [
         "https://api.transitous.org",
         "https://ipwho.is",
@@ -21,5 +24,5 @@
       ]
     }
   ],
-  "supported_languages": ["de", "en"]
+  "supported_languages": ["de"]
 }

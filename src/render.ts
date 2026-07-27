@@ -5,6 +5,13 @@
 // Zwei Layouts:
 //   text(): ein Vollbild-Text-Container (Laden/Fehler/Meldung), faengt Events.
 //   list(): Titelzeile oben (ohne Event) + Listen-Container darunter (Event).
+//
+// Wichtig (auf Hardware erarbeitet, vgl. dorfkino-g2):
+//   - Nach jedem Listenaufbau feuert die Firmware einen AUTO-SELECT auf
+//     Index 0. Zeile 0 jeder Liste muss daher beim Aufrufer eine No-Op-
+//     Kopfzeile sein, echte Eintraege ab Index 1.
+//   - rebuild/startup koennen fehlschlagen (oversize, Dev-Reload). Ergebnis
+//     pruefen und Fehler sichtbar machen, nie stumm schwarz bleiben.
 
 import {
   CreateStartUpPageContainer,
@@ -45,7 +52,8 @@ export class Renderer {
     await this.render({ containerTotalNum: 1, textObject: [main] })
   }
 
-  /** Titelzeile + scrollbare Liste. Leere Liste -> Platzhalter-Item. */
+  /** Titelzeile + scrollbare Liste. Leere Liste -> Platzhalter-Item.
+   *  Zeile 0 sollte beim Aufrufer eine No-Op-Kopfzeile sein (Auto-Select). */
   async list(title: string, items: string[]): Promise<void> {
     const safe = items.slice(0, 20).map((s) => clamp(s, 64))
     const names = safe.length ? safe : ['(keine)']
@@ -84,22 +92,39 @@ export class Renderer {
       }),
     })
 
-    await this.render({
+    const ok = await this.render({
       containerTotalNum: 2,
       textObject: [titleC],
       listObject: [list],
     })
+    if (!ok) {
+      // Nie stumm schwarz bleiben: Fehler sichtbar machen.
+      await this.text(
+        'LISTEN-FEHLER',
+        `Anzeige fehlgeschlagen (${names.length} Zeilen)\n\nDoppeltipp: beenden`,
+      )
+    }
   }
 
-  private async render(spec: PageSpec): Promise<void> {
+  /** true = Seite steht; false = Host hat den Aufbau abgelehnt (oversize o. ae.). */
+  private async render(spec: PageSpec): Promise<boolean> {
     if (!this.started) {
       const res = await this.bridge.createStartUpPageContainer(
         new CreateStartUpPageContainer(spec),
       )
-      if (res !== 0) console.error('createStartUpPageContainer failed:', res)
       this.started = true
-    } else {
-      await this.bridge.rebuildPageContainer(new RebuildPageContainer(spec))
+      // Bei einem Dev-Reload haelt der Host die Startseite noch -> ein
+      // zweites createStartUpPageContainer wird als "invalid" (1) abgelehnt.
+      // Dann auf rebuild zurueckfallen, statt leer zu bleiben.
+      if (res !== 0) {
+        console.warn('createStartUpPageContainer failed:', res, '- fallback to rebuild')
+        const ok = await this.bridge.rebuildPageContainer(new RebuildPageContainer(spec))
+        return ok !== false
+      }
+      return true
     }
+    const ok = await this.bridge.rebuildPageContainer(new RebuildPageContainer(spec))
+    if (ok === false) console.error('rebuildPageContainer failed (oversize?)')
+    return ok !== false
   }
 }
