@@ -7,6 +7,7 @@
 
 import type { Stop } from './transit'
 import type { GeoResult } from './location'
+import { LOCALE, t } from './i18n'
 
 const CSS = `
 :root {
@@ -67,7 +68,8 @@ const ICON_SVG = `
 
 function fmtDist(m: number): string {
   if (m < 1000) return `${Math.round(m)} m`
-  return `${(m / 1000).toFixed(1).replace('.', ',')} km`
+  const km = (m / 1000).toFixed(1)
+  return `${LOCALE === 'de' ? km.replace('.', ',') : km} km`
 }
 
 export interface PhoneUi {
@@ -88,17 +90,13 @@ export function initPhoneUi(): PhoneUi {
   app.innerHTML = `
     <main class="wrap">
       <div class="head">${ICON_SVG}<h1>Abfahrten G2</h1></div>
-      <p class="tagline">&Ouml;PNV-Abfahrten in deiner N&auml;he auf der Brille</p>
-      <div class="status" id="ph-status">Standort wird ermittelt ...</div>
-      <div class="label">Haltestellen in der N&auml;he</div>
+      <p class="tagline">${t('phTagline')}</p>
+      <div class="status" id="ph-status">${t('locating')}</div>
+      <div class="label">${t('phStopsSection')}</div>
       <div class="rows" id="ph-rows"></div>
-      <div class="label">Bedienung auf der Brille</div>
-      <p class="hints">
-        <b>Wischen</b> &ndash; Liste scrollen<br>
-        <b>Tippen</b> &ndash; Haltestelle &ouml;ffnen, Abfahrt zeigt den Fahrtverlauf<br>
-        <b>Doppeltippen</b> &ndash; zur&uuml;ck / beenden
-      </p>
-      <p class="foot">Daten: Transitous (transitous.org) &middot; deutschlandweit, mit Echtzeit</p>
+      <div class="label">${t('phControlsSection')}</div>
+      <p class="hints">${t('phHints')}</p>
+      <p class="foot">${t('phFooter')}</p>
     </main>`
 
   const statusEl = app.querySelector<HTMLDivElement>('#ph-status')!
@@ -109,8 +107,8 @@ export function initPhoneUi(): PhoneUi {
       statusEl.textContent = text
     },
     setStops(stops: Stop[], geo: GeoResult): void {
-      const src = geo.source === 'ip' ? ' (ungefähr, per IP)' : ''
-      statusEl.innerHTML = `<b>${stops.length} Haltestellen in der Nähe</b>${src} &ndash; Auswahl und Abfahrten laufen auf der Brille.`
+      const src = geo.source === 'ip' ? t('phApproxIp') : ''
+      statusEl.innerHTML = t('phCount', { n: stops.length, src })
       rowsEl.innerHTML = stops
         .slice(0, 10)
         .map(

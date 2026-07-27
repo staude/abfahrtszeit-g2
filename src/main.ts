@@ -31,8 +31,9 @@ import {
 } from './format'
 import { Renderer } from './render'
 import { initPhoneUi } from './phone'
+import { t } from './i18n'
 
-const TITLE = 'ABFAHRTEN'
+const TITLE = t('title')
 
 type StopsState = { name: 'stops'; geo: GeoResult; stops: Stop[] }
 type DeparturesState = {
@@ -78,17 +79,17 @@ async function main(): Promise<void> {
     busy = true
     try {
       state = { name: 'locating' }
-      phone.setStatus('Standort wird ermittelt ...')
-      await view.text(TITLE, 'Standort wird ermittelt ...')
+      phone.setStatus(t('locating'))
+      await view.text(TITLE, t('locating'))
       const geo = await getLocation(bridge)
 
-      phone.setStatus('Suche Haltestellen ...')
-      await view.text(TITLE, 'Suche Haltestellen ...')
+      phone.setStatus(t('searchingStops'))
+      await view.text(TITLE, t('searchingStops'))
       const stops = await nearbyStops(geo.lat, geo.lon, 20)
 
       if (stops.length === 0) {
-        phone.setStatus('Keine Haltestellen in der Naehe gefunden.')
-        state = { name: 'error', message: 'Keine Haltestellen in der Naehe gefunden.' }
+        phone.setStatus(t('noStops'))
+        state = { name: 'error', message: t('noStops') }
         await renderError()
         return
       }
@@ -96,7 +97,7 @@ async function main(): Promise<void> {
       state = { name: 'stops', geo, stops }
       await renderStops()
     } catch (e) {
-      phone.setStatus(`Fehler beim Laden: ${errMsg(e)}`)
+      phone.setStatus(t('phLoadError', { msg: errMsg(e) }))
       state = { name: 'error', message: errMsg(e) }
       await renderError()
     } finally {
@@ -109,7 +110,7 @@ async function main(): Promise<void> {
     const { geo, stops } = state
     busy = true
     try {
-      await view.text(TITLE, `${stop.name}\nLade Abfahrten ...`)
+      await view.text(TITLE, `${stop.name}\n${t('loadingDepartures')}`)
       const deps = await departures(stop, 20)
       const rows = departureRowList(deps, 20)
       state = { name: 'departures', geo, stops, stop, deps, rows }
@@ -127,7 +128,7 @@ async function main(): Promise<void> {
     const from = state
     busy = true
     try {
-      await view.text(TITLE, `${dep.line} ${dep.direction ?? ''}\nLade Fahrt ...`)
+      await view.text(TITLE, `${dep.line} ${dep.direction ?? ''}\n${t('loadingTrip')}`)
       const { stops } = await tripStops(dep.tripId)
 
       // Verlauf ab dem Einstieg (zeitlich passender Halt) beginnen, damit die
@@ -155,10 +156,10 @@ async function main(): Promise<void> {
 
   async function renderStops(): Promise<void> {
     if (state.name !== 'stops') return
-    const src = state.geo.source === 'ip' ? ' (ca.)' : ''
+    const src = state.geo.source === 'ip' ? t('approx') : ''
     const title = `${TITLE}  ${state.stops.length}${src}`
     // Zeile 0 = No-Op-Kopfzeile (Firmware-Auto-Select), Stops ab Zeile 1.
-    const items = ['- Haltestelle waehlen -', ...state.stops.map(stopLabel)]
+    const items = [t('stopHeader'), ...state.stops.map(stopLabel)]
     await view.list(title, items)
   }
 
@@ -166,7 +167,7 @@ async function main(): Promise<void> {
     if (state.name !== 'departures') return
     const title = clamp(state.stop.name, 40)
     const items = state.rows.map((r) => r.label)
-    await view.list(title, items.length ? items : ['Keine Abfahrten'])
+    await view.list(title, items.length ? items : [t('noDepartures')])
   }
 
   async function renderTrip(): Promise<void> {
@@ -175,16 +176,13 @@ async function main(): Promise<void> {
     const title = clamp(`${d.line} ${d.direction ?? ''}`.trim(), 60)
     // Zeile 0 = No-Op-Kopfzeile (Firmware-Auto-Select), Halte ab Zeile 1.
     const stops = state.stops.map(tripStopLabel)
-    const items = ['- Fahrtverlauf -', ...(stops.length ? stops : ['Kein Fahrtverlauf'])]
+    const items = [t('tripHeader'), ...(stops.length ? stops : [t('noTrip')])]
     await view.list(title, items)
   }
 
   async function renderError(): Promise<void> {
     if (state.name !== 'error') return
-    await view.text(
-      'FEHLER',
-      `${state.message}\n\nTipp: erneut versuchen\nDoppeltipp: beenden`,
-    )
+    await view.text(t('errorTitle'), `${state.message}\n\n${t('errorHint')}`)
   }
 
   async function rerender(): Promise<void> {
@@ -198,7 +196,7 @@ async function main(): Promise<void> {
       case 'error':
         return renderError()
       case 'locating':
-        return view.text(TITLE, 'Standort wird ermittelt ...')
+        return view.text(TITLE, t('locating'))
     }
   }
 

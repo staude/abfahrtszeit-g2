@@ -21,6 +21,7 @@ import {
   TextContainerProperty,
 } from '@evenrealities/even_hub_sdk'
 import { clamp } from './format'
+import { t } from './i18n'
 
 type PageSpec = {
   containerTotalNum: number
@@ -99,10 +100,7 @@ export class Renderer {
     })
     if (!ok) {
       // Nie stumm schwarz bleiben: Fehler sichtbar machen.
-      await this.text(
-        'LISTEN-FEHLER',
-        `Anzeige fehlgeschlagen (${names.length} Zeilen)\n\nDoppeltipp: beenden`,
-      )
+      await this.text(t('listError'), t('listErrorBody', { n: names.length }))
     }
   }
 

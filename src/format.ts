@@ -3,6 +3,7 @@
 // Listen-Items: max. 64 Zeichen (SDK-Grenze).
 
 import type { Departure, Stop, TripStop } from './transit'
+import { LOCALE, weekdays } from './i18n'
 
 /** Auf max. `max` Zeichen kuerzen (ohne Ellipsis-Glyph, firmware-sicher). */
 export function clamp(s: string, max: number): string {
@@ -29,7 +30,8 @@ function fmtDelayMin(whenIso: string | null, schedIso: string | null): string {
 function fmtDist(m?: number): string {
   if (m == null) return ''
   if (m < 1000) return `${Math.round(m)} m`
-  return `${(m / 1000).toFixed(1).replace('.', ',')} km`
+  const km = (m / 1000).toFixed(1)
+  return `${LOCALE === 'de' ? km.replace('.', ',') : km} km`
 }
 
 /** "Hauptbahnhof (120 m)" */
@@ -38,15 +40,13 @@ export function stopLabel(s: Stop): string {
   return clamp(dist ? `${s.name} (${dist})` : s.name, 64)
 }
 
-const WEEKDAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
-
 function localDateKey(dt: Date): string {
   return `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}`
 }
 
-/** Datums-Trennzeile, z. B. "-- Mo 27.07. --" */
+/** Datums-Trennzeile, z. B. "-- Mo 27.07. --" (Wochentag lokalisiert) */
 function dateHeader(dt: Date): string {
-  const wd = WEEKDAYS[dt.getDay()]
+  const wd = weekdays()[dt.getDay()]
   const dd = String(dt.getDate()).padStart(2, '0')
   const mm = String(dt.getMonth() + 1).padStart(2, '0')
   return `-- ${wd} ${dd}.${mm}. --`

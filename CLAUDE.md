@@ -32,6 +32,8 @@ ueber Transitous (MOTIS, api.transitous.org), deutschlandweit.
 - `src/transit.ts` - API-Client (Transitous/MOTIS): nearbyStops, departures
   (merge über Steige, time=jetzt, Filter auf zukünftig), tripStops.
 - `src/location.ts` - Standort: URL-Override, getAppLocation, navigator, IP.
+- `src/i18n.ts` - de/en-Wörterbuch, `t(key)`, `weekdays()`. Sprache aus
+  navigator.language (Systemsprache im WebView), Fallback en, `?lang=` zum Test.
 - `src/format.ts` - Labels, Datumszeilen, DepartureRow-Mapping, clamp.
 - `src/render.ts` - Renderer (text/list), prüft rebuild-Ergebnis, Fallback.
 - `src/phone.ts` - Handy-Seite (WebView), Pflicht fürs Store-Review.
@@ -55,6 +57,11 @@ ueber Transitous (MOTIS, api.transitous.org), deutschlandweit.
 - Handy-Seite (`phone.ts`) ist Pflicht: ein leeres WebView ist ein
   Store-Ablehnungsgrund. Zeigt Identitaet, Haltestellen in der Naehe,
   Bedienhinweise. Akzent `#FEF991`, NIE das Brillen-Gruen.
+- Zweisprachig (de/en), Muster wie dorfkino-g2: alle UI-Texte in `i18n.ts`,
+  Sprache aus navigator.language, Test per `?lang=de|en`. Fahrplan-Daten und
+  Eigennamen (Haltestellen, Linien) bleiben unuebersetzt. app.json:
+  `supported_languages: ["de","en"]`. Deutsche Glasses-Texte mit echten
+  Umlauten (Font rendert sie korrekt).
 - Datenquelle: https://api.transitous.org (MOTIS v2, DELFI-GTFS + Echtzeit,
   deutschlandweit). Sendet CORS `*`, keine API-Keys. Domain steht in der
   app.json network-whitelist. Ersetzt die urspruenglich geplante DB-HAFAS-API

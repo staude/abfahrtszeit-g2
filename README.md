@@ -67,6 +67,14 @@ Live-Liste der Haltestellen in der Nähe (dieselben Daten wie die Brille) und
 Bedienhinweise. Gestaltet nach den Even Phone-Side-Tokens (hell/dunkel), Akzent
 sparsam, nie das Brillen-Grün.
 
+## Sprachen
+
+Die Oberfläche ist zweisprachig (Deutsch/Englisch). Die Sprache wird beim Start
+aus `navigator.language` (der Systemsprache im WebView) abgeleitet, Fallback
+Englisch. Alle UI-Texte liegen in [`src/i18n.ts`](src/i18n.ts); Fahrplandaten und
+Eigennamen (Haltestellen, Linien) bleiben unübersetzt. Zum Testen lässt sich die
+Sprache per `?lang=de` bzw. `?lang=en` erzwingen.
+
 ## Voraussetzungen
 
 - Node 20 LTS oder 22+
