@@ -29,12 +29,11 @@ dieser Fahrt ab der eigenen Haltestelle.
 
 ## Bedienung auf der Brille
 
-- **Swipe hoch/runter** — durch die Liste scrollen
-- **Einfachtipp** —
-  Haltestelle → Abfahrten, Abfahrt → Fahrtverlauf (alle Halte der Fahrt).
-  Datums-Trennzeilen (`-- Mo 27.07. --`) sind nicht anwaehlbar.
-- **Doppeltipp** — eine Ebene zurueck (Fahrtverlauf → Abfahrten →
-  Haltestellen); auf der Haltestellenliste beendet der Doppeltipp das Plugin
+| Eingabe | Wirkung |
+|---|---|
+| Swipe hoch/runter | durch die Liste scrollen |
+| Einfachtipp | Haltestelle -> Abfahrten, Abfahrt -> Fahrtverlauf; Datums-Trennzeilen (`-- Mo 27.07. --`) sind nicht anwählbar |
+| Doppeltipp | eine Ebene zurück (Fahrtverlauf -> Abfahrten -> Haltestellen); auf der Haltestellenliste: Plugin beenden |
 
 ## Standort
 
