@@ -57,6 +57,13 @@ ueber Transitous (MOTIS, api.transitous.org), deutschlandweit.
 - Handy-Seite (`phone.ts`) ist Pflicht: ein leeres WebView ist ein
   Store-Ablehnungsgrund. Zeigt Identitaet, Haltestellen in der Naehe,
   Bedienhinweise. Akzent `#FEF991`, NIE das Brillen-Gruen.
+- Store-Screenshots: die ROHE Simulator-Ausgabe verwenden (`/api/screenshot/glasses`
+  bzw. der Screenshot-Button des Simulators, 576x288 RGBA, transparenter
+  Hintergrund, anti-aliased grün) und mit der NEUESTEN Simulator-Version
+  aufnehmen. NICHT auf Schwarz flachrechnen oder umfärben - genau daran
+  scheiterte das erste Store-Review (2026-07-31: "Screenshot does not pass the
+  standard. Please use the simulator (latest version)"). Format wie dorfkino-g2
+  (im Store akzeptiert).
 - Zweisprachig (de/en), Muster wie dorfkino-g2: alle UI-Texte in `i18n.ts`,
   Sprache aus navigator.language, Test per `?lang=de|en`. Fahrplan-Daten und
   Eigennamen (Haltestellen, Linien) bleiben unuebersetzt. app.json:
